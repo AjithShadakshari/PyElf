@@ -1,0 +1,157 @@
+#!/usr/bin/env python
+
+import site,sys
+import getopt
+
+site.addsitedir('/home/ajisha01/elf/elf')
+import Elf
+
+
+def dump(src, length=16):
+		FILTER=''.join([(len(repr(chr(x)))==3) and chr(x) or '.' for x in range(256)])
+		N=0; result=''
+		while src:
+				s,src = src[:length],src[length:]
+				hexa = ' '.join(["%02X"%ord(x) for x in s])
+				s = s.translate(FILTER)
+				result += "%04X   %-*s   %s\n" % (N, length*3, hexa, s)
+				N+=length
+		print result
+
+def print_elf(e):
+	
+	print "ELF Header:\n"
+	
+	st  = "\t%s\t" % ('Magic:') + ' '.join(["%02X" % ord(x) for x in e.e_ident]) + '\n\n'
+	st += "\t%35s\t%s\n" % ( 'Class', e.ei_class)
+	st += "\t%35s\t%s\n" % ( 'Endianness', e.ei_data)
+	st += "\t%35s\t%s\n" % ( 'Type', e.elftype)
+	st += "\t%35s\t%s\n" % ( 'Arch', e.machine)
+	st += "\t%35s\t%s\n" % ( 'Version', e.version)
+	st += "\t%35s\t0x%08x\n" % ( 'Entry point', e.entry)
+	st += "\t%35s\t%d\n" % ( 'Program header offset', e.phoff)
+	st += "\t%35s\t%d\n" % ( 'Section header offset', e.shoff)
+	st += "\t%35s\t0x%x\n" % ( 'Flags', e.flags)
+	st += "\t%35s\t%d bytes\n" % ( 'ELF Header size', e.ehsize)
+	st += "\t%35s\t%d bytes\n" % ( 'Program header entry size', e.phentsize)
+	st += "\t%35s\t%d\n" % ( 'Number of program headers', e.phnum)
+	st += "\t%35s\t%d bytes\n" % ( 'Section header entry size', e.shentsize)
+	st += "\t%35s\t%d\n" % ( 'Number of section headers', e.shnum)
+	st += "\t%35s\t%d" % ( 'Section header string table index', e.shstrndx)
+	st += " ( %s )\n" % e.shdrs[e.shstrndx].name 
+	
+	print st
+
+	if len(e.shdrs) != 0:
+		print "Section Headers:\n"
+		print "  [Nr] Name              Type            Addr     Off    Size   ES Flg Lk Inf Al\n"
+
+		for i in range(0,len(e.shdrs)):
+				sh = e.shdrs[i]
+				print "  %2d  %-18s %-14s  %08x %06x %06x %02x %3s %2d %2d %2d" % \
+					(i, sh.name[:18], sh.shtype, sh.addr, sh.offset, sh.size, sh.entsize, 
+					''.join(sh.flags), sh.link, sh.info, sh.addralign), sh.linksec.shdr.name
+
+	if len(e.phdrs) != 0:
+		print "\nProgram Headers:\n"
+		print "  Type           Offset   VirtAddr   PhysAddr   FileSiz  MemSiz   Flg Align\n"
+
+		for ph in e.phdrs:
+				print "  %-14s 0x%06x 0x%08x 0x%08x 0x%06x 0x%06x %3s	0x%x" % \
+				(ph.phtype, ph.offset, ph.vaddr, ph.paddr, ph.filesz, ph.memsz, ''.join(ph.flags), ph.align)
+		print
+
+	for s in e.shdrs:
+
+		if s.name != '':
+			print "\n" + s.name + "\n"
+
+		if s.shtype == 'SYMTAB' or s.shtype == 'DYNSYM':
+				for sym in s.section.symbols:
+					st = "\t%08x  %4d %-7s %-6s %-8s %3d %s" % (	
+					sym.value, sym.size, sym.symtype, sym.binding, 
+					sym.visibility, sym.shndx, sym.name)
+					print st
+
+		elif s.shtype == 'DYNAMIC': 
+				for dynent in s.section.dynents:
+					print "\t%-20s %x 	%s" % (dynent.tag, dynent.value, dynent.st)
+
+		elif s.shtype == 'REL' :
+				for relent in s.section.relents:
+					print "\t%x %x %s %s" % (relent.offset, relent.info, relent.reltype, relent.sym)
+
+		elif s.shtype == 'RELA' :
+				for relaent in s.section.relaents:
+					print "\t%x %x %s %s" % (relaent.offset, relaent.info, relaent.relatype, relaent.sym)
+
+		elif s.shtype == 'GNU_VERSYM': 
+				for versyment in s.section.versyments:
+						print "\t", versyment
+
+		elif s.shtype == 'GNU_VERNEED':
+				for vn in s.section.vns:
+					print "    Version: %d File: %s Cnt: %d\n" %(vn.version, vn.filename, vn.cnt)
+					for vna in vn.vnas:
+						print "\tName: %s Flags: %x Version: %d" % (vna.libname, vna.flags, vna.other)
+
+		elif s.shtype == 'GNU_HASH':
+				ss = s.section
+				print "\tSymIndex: %d  shift2: %d\n" % \
+								(ss.symndx, ss.shift2)
+
+				st = '\tMaskwords: %d' % (ss.nmaskwords)
+				st += '   [' + ','.join(" 0x%x " % i for i in ss.maskwords) + ']'
+				print st
+
+				st = '\t  Buckets: %d' % (ss.nbuckets)
+				st += '   [' + ','.join(" %d " % i for i in ss.buckets) + ']'
+				print st
+
+		elif s.shtype == 'HASH':
+				st = "\tBuckets: %d" % (s.section.nbuckets)
+				st += '    [' + ','.join(" %d " % i for i in s.section.buckets) + ']'
+				print st
+
+				st = "\t Chains: %d" % (s.section.nchains)
+				st += '    [' + ','.join(" %d " % i for i in s.section.chains) + ']'
+				print st+'\n'
+
+		elif s.shtype == 'NOTE':
+				print "\tName: %s  Kernel Version: %s\n" % ( s.section.name.split('\0')[0], s.section.kversion)
+
+#		elif s.name.find('debug') != -1:
+#				dump(s.section.data)
+
+def main():
+
+	try:
+		opts, args = getopt.getopt(sys.argv[1:], "h", ["help"])
+	except getopt.error, msg:
+		print msg
+		print "for help use --help"
+		return 2
+
+	if len(args) == 0:
+		print __doc__
+		return 0
+
+	for o, a in opts:
+		if o in ("-h", "--help"):
+			print __doc__
+			return 0
+
+	# treat the rest of the command line parameters as files to be processed
+	for f in args:
+		try:
+			e = Elf.open(f)
+
+		except (IOError,SyntaxError), msg:
+			print "Error:",msg
+			return 0
+
+		print_elf(e)
+
+if __name__ == "__main__":
+	sys.exit(main())
+

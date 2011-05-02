@@ -1,0 +1,68 @@
+#!/usr/bin/env python
+
+import site,sys
+import getopt
+
+site.addsitedir('elf')
+import Elf
+
+def modify(e):
+	'''
+	for s in e.shdrs:
+			if s.name.find('debug') != -1:
+				s.sh_name = 0
+				s.name = ''
+				s.shtype = 'NULL'
+				s.flags = ''
+				s.addr = 0
+				s.offset = 0
+				s.size = 0
+				s.link = 0
+				s.info = 0
+				s.addralign = 0
+				s.entsize = 0
+				s.section.data = ''
+	'''
+	return 0
+
+def main():
+
+	try:
+		opts, args = getopt.getopt(sys.argv[1:], "hs:", ["help", "save"])
+	except getopt.error, msg:
+		print msg
+		print "for help use --help"
+		return 2
+
+	if len(args) == 0:
+		print __doc__
+		return 0
+
+	savefile = ''
+
+	for o, a in opts:
+		if o in ("-h", "--help"):
+			print __doc__
+			return 0
+
+		elif o in ("-s", "--save"):
+			savefile = a
+			print "Save to file:", savefile 
+
+	# treat the rest of the command line parameters as files to be processed
+	for f in args:
+		try:
+			e = Elf.open(f)
+
+		except (IOError,SyntaxError), msg:
+			print "Error:",msg
+			return 0
+
+		modify(e)
+
+		if savefile != '':
+				Elf.save(e, savefile)
+
+if __name__ == "__main__":
+	sys.exit(main())
+
