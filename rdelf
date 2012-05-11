@@ -66,6 +66,9 @@ def print_elf(e):
 		if s.name != '':
 			print "\n" + s.name + "\n"
 
+		if s.name == '.interp':
+			print "\t" + s.section.data[:-1]
+
 		if s.shtype == 'SYMTAB' or s.shtype == 'DYNSYM':
 				for sym in s.section.symbols:
 					st = "\t%08x  %4d %-7s %-6s %-8s %3d %s" % (	
@@ -73,11 +76,15 @@ def print_elf(e):
 					sym.visibility, sym.shndx, sym.name)
 					print st
 
-		elif s.shtype == 'DYNAMIC': 
+		elif s.shtype == 'STRTAB':
+			for string in s.section.data.split('\0')[1:-1]:
+				print "\t" + string
+
+		elif s.shtype == 'DYNAMIC':
 				for dynent in s.section.dynents:
 					print "\t%-20s %x 	%s" % (dynent.tag, dynent.value, dynent.st)
 
-		elif s.shtype == 'REL' :
+		elif s.shtype == 'REL':
 				for relent in s.section.relents:
 					print "\t%x %x %s %s" % (relent.offset, relent.info, relent.reltype, relent.sym)
 
@@ -120,8 +127,8 @@ def print_elf(e):
 		elif s.shtype == 'NOTE':
 				print "\tName: %s  Kernel Version: %s\n" % ( s.section.name.split('\0')[0], s.section.kversion)
 
-#		elif s.name.find('debug') != -1:
-#				dump(s.section.data)
+		elif s.name.find('debug') != -1:
+				dump(s.section.data)
 
 def main():
 
