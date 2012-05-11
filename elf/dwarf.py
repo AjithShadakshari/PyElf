@@ -11,6 +11,8 @@ class dwarf:
 					'.debug_abbrev': debug_abbrev,
 					'.debug_line': debug_line,
 					'.debug_str': debug_str,
+					'.debug_frame': debug_frame,
+					'.debug_loc': debug_loc,
 				}
 
 				for ds in debug_sections:
@@ -33,7 +35,7 @@ class debug_aranges:
 						ar = arange(data[:size + 4])
 						aranges.append(ar)
 						data = data[size+4:]
-						print ar.__dict__
+						#print ar.__dict__
 
 class arange:
 		def __init__(self, data):
@@ -54,7 +56,7 @@ class debug_pubnames:
 						pn = pubname(data[:size + 4])
 						pubnames.append(pn)
 						data = data[size+4:]
-						print pn.__dict__
+						#print pn.__dict__
 
 class pubname:
 		def __init__(self, data):
@@ -76,7 +78,7 @@ class debug_info:
 						cu = compilation_unit(data[:size + 4])
 						compilation_units.append(cu)
 						data = data[size+4:]
-						print cu.__dict__
+						#print cu.__dict__
 
 class compilation_unit:
 		def __init__(self, data):
@@ -108,6 +110,16 @@ class debug_str:
 ##################### ranges ####################
 
 class debug_ranges:
+
+		def __init__(self, shdr):
+				self.data = shdr.section.data
+
+class debug_frame:
+
+		def __init__(self, shdr):
+				self.data = shdr.section.data
+
+class debug_loc:
 
 		def __init__(self, shdr):
 				self.data = shdr.section.data

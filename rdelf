@@ -3,7 +3,7 @@
 import site,sys
 import getopt
 
-site.addsitedir('/home/ajisha01/elf/elf')
+site.addsitedir('elf')
 import Elf
 
 

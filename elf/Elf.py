@@ -30,7 +30,8 @@ class elf:
 			7 :'860', 
 			8 :'MIPS',
 			40 :'ARM',
-			62 :'X86_64'
+			62 :'X86_64',
+			183 :'AARCH64'
 			}
 
 	def __init__(self, fp):
@@ -54,6 +55,7 @@ class elf:
 			self.ei_data = self.DATA[data]
 
 		except KeyError:
+			print "Invalid field",eclass,data
 			raise SyntaxError, 'Invalid field'
 
 		self.endformat = {'LE':'<', 'BE': '>'}[self.ei_data]
@@ -71,6 +73,7 @@ class elf:
 			self.version = self.VERSION[version]
 
 		except KeyError:
+			print "Invalid field",etype,machine,version
 			raise SyntaxError("Invalid field")
 
 		importstr = "import arch_%s as arch" % (self.machine)
@@ -467,7 +470,7 @@ class dynent:
 		0 : 'NULL',
 		1 : 'NEEDED', 
 		2 : 'PLTRELSZ',
-		3	: 'PLTGOT',
+		3 : 'PLTGOT',
 		4 : 'HASH',
 		5 : 'STRTAB', 
 		6 : 'SYMTAB',
@@ -498,6 +501,9 @@ class dynent:
 		0x6ffffef5 : 'GNU_HASH',
 
 		0x6ffffff0 : 'GNU_VERSYM',
+		0x6ffffffa : 'GNU_RELCOUNT',
+		0x6ffffffc : 'GNU_VERDEF',
+		0x6ffffffd : 'GNU_VERDEFNUM',
 		0x6ffffffe : 'GNU_VERNEED',
 		0x6fffffff : 'GNU_VERNUM',
 
@@ -509,10 +515,10 @@ class dynent:
 		(tag, value) = struct.unpack(header.endformat + header.addrformat *2, st)
 		try:
 			self.tag = self.TAG[tag]
-		except KeyError:
+		except KeyError, AttributeError:
 			try:
 				self.tag = header.arch.TAG[tag]
-			except KeyError:
+			except KeyError, AttributeError:
 				raise SyntaxError, "Unknown dynamic tag: 0x%x\n" % (tag)
 			
 		self.value = value
